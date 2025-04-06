@@ -90,6 +90,7 @@ The following environment variables can be specified:
 | `CLIENT_RETRY_DELAY_SECONDS`       | 1       | 5               | Seconds to delay between connection attempts       |
 | `CLIENT_TIMEOUT_SECONDS`           | 20      | 60              | Http client timeout in seconds                     |
 
+
 > **Note:** The following optional settings apply only if `FULL_SYNC=false`. They allow for granular control of synchronization if a full sync is not wanted.
 
 | Name                              | Default | Description                            |
@@ -137,6 +138,47 @@ Config keys are relative to the section and are **case sensitive**. For example,
 
 ### Default user of Docker container / Docker secrets example
 By default, the Docker container runs as user `1001`. If you are using Docker secrets, the user that is running the container will need read permissions to the files that the Docker secrets reference. If the user does not have the right permissions you will receive an error `Failed to initialize service error="open /run/secrets/primary: permission denied"`. To avoid this error, either make sure to `chown 1001 ./your/secretfiles && chmod 400 ./your/secretfiles` or use the [`user` directive in Docker Compose](https://docs.docker.com/reference/compose-file/services/#user) to change the user that the container runs as to a user of your choice - and then make sure to update your secret files' ownership to that user. In the example [docker-compose-with-secrets.yml](examples/docker-compose-with-secrets.yml), user `1234` owns `./secrets/primary.txt` and `./secrets/replicas.txt` and both have `-r--------` permissions.
+
+### Webhooks
+
+Nebula Sync can invoke webhooks depeneding if a sync succeeded or failed. URL is required for the webhook to trigger. Both success and failure webhooks use the same enviroment variable pattern. Webhooks have a timeout of 10 seconds.
+
+| Name                                    | Default | Example                           | Description                                        |
+|-----------------------------------------|---------|-----------------------------------|----------------------------------------------------|
+| `SYNC_WEBHOOK_(SUCCESS\|FAILURE)_URL`    | n/a     | `https://www.example.com/webhook` | URL to invoke for the webhook    |
+| `SYNC_WEBHOOK_(SUCCESS\|FAILURE)_METHOD` | `POST`  | `GET`                             | The HTTP method for the webhook     |
+| `SYNC_WEBHOOK_(SUCCESS\|FAILURE)_BODY`   | n/a     | `this is my webhook body`         | The body of the webhook request |
+| `SYNC_WEBHOOK_(SUCCESS\|FAILURE)_HEADERS` | n/a    | `header1:foo,header2:bar`         | HTTP headers to set for the webhook request in the format `key:value` separated by comma. Any whitespace will be used verbatim, no string trimming. | 
+
+Additionally, you can skip TLS verification for all webhooks if necessary:
+
+| Name                                            | Default | Example         | Description                                        |
+|-------------------------------------------------|---------|-----------------|----------------------------------------------------|
+| `SYNC_WEBHOOK_CLIENT_SKIP_TLS_VERIFICATION`     | false   | true            | Skips TLS certificate verification                 |
+
+#### Examples
+
+##### healthcheck.io:
+
+```
+SYNC_WEBHOOK_SUCCESS_URL=https://hc-ping.com/{your-slug-or-guid-here}
+SYNC_WEBHOOK_FAILURE_URL=https://hc-ping.com/{your-slug-or-guid-here}/fail
+```
+
+##### Apprise:
+
+```
+SYNC_WEBHOOK_FAILURE_URL=http://localhost:8080/notify
+SYNC_WEBHOOK_FAILURE_BODY=urls=mailto://user:pass@gmail.com&body=test message
+```
+
+##### A service that needs JSON:
+
+```
+SYNC_WEBHOOK_FAILURE_URL=https://www.example.com/notify.json
+SYNC_WEBHOOK_FAILURE_BODY={"hello":"world"}
+SYNC_WEBHOOK_FAILURE_HEADERS=Content-Type:application/json
+```
 
 
 ## Disclaimer

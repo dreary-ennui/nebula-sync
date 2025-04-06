@@ -2,19 +2,22 @@ package service
 
 import (
 	"fmt"
+
 	"github.com/lovelaze/nebula-sync/internal/sync/retry"
 
 	"github.com/lovelaze/nebula-sync/internal/config"
 	"github.com/lovelaze/nebula-sync/internal/pihole"
 	"github.com/lovelaze/nebula-sync/internal/sync"
+	"github.com/lovelaze/nebula-sync/internal/webhook"
 	"github.com/lovelaze/nebula-sync/version"
 	"github.com/robfig/cron/v3"
 	"github.com/rs/zerolog/log"
 )
 
 type Service struct {
-	target sync.Target
-	conf   config.Config
+	target  sync.Target
+	conf    config.Config
+	webhook webhook.WebhookClient
 }
 
 func Init() (*Service, error) {
@@ -33,8 +36,9 @@ func Init() (*Service, error) {
 	}
 
 	return &Service{
-		target: sync.NewTarget(primary, replicas),
-		conf:   conf,
+		target:  sync.NewTarget(primary, replicas),
+		conf:    conf,
+		webhook: webhook.NewWebhookClient(conf.Sync.WebhookSettings),
 	}, nil
 }
 
@@ -65,10 +69,17 @@ func (service *Service) doSync(t sync.Target) (err error) {
 	}
 
 	if err != nil {
-		return err
+		if err := service.webhook.Failure(); err != nil {
+			log.Error().Err(err).Msg("Failed to send failure webhook")
+		}
+	} else {
+		log.Info().Msg("Sync completed")
+
+		if err := service.webhook.Success(); err != nil {
+			log.Error().Err(err).Msg("Failed to send success webhook")
+		}
 	}
 
-	log.Info().Msg("Sync complete")
 	return err
 }
 

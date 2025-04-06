@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+
 	"github.com/kelseyhightower/envconfig"
 	"github.com/lovelaze/nebula-sync/internal/pihole/model"
 	"github.com/lovelaze/nebula-sync/internal/sync/filter"
@@ -19,7 +20,8 @@ type Sync struct {
 	Cron            *string `envconfig:"CRON"`
 	RunGravity      bool    `default:"false" envconfig:"RUN_GRAVITY"`
 	GravitySettings *GravitySettings
-	ConfigSettings  *ConfigSettings `ignored:"true"`
+	ConfigSettings  *ConfigSettings  `ignored:"true"`
+	WebhookSettings *WebhookSettings `ignored:"true"`
 }
 
 type GravitySettings struct {
@@ -169,6 +171,10 @@ func (c *Config) Load() error {
 		return err
 	}
 
+	if err := c.loadWebhookSettings(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -224,4 +230,12 @@ func (cs *ConfigSetting) String() string {
 
 func (cs *ConfigFilter) String() string {
 	return fmt.Sprintf("%+v", *cs)
+}
+
+func (wes *WebhookEventSetting) String() string {
+	return fmt.Sprintf("%+v", *wes)
+}
+
+func (wes *WebhookSettings) String() string {
+	return fmt.Sprintf("%+v", *wes)
 }
