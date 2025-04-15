@@ -1,6 +1,7 @@
 package webhook
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -11,23 +12,23 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestWebhookClient(t *testing.T) {
+func TestWebhook(t *testing.T) {
 	t.Run("success webhook uses success configuration", func(t *testing.T) {
 		// Setup test server to verify request
 		var receivedHeaders http.Header
 		var receivedBody string
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			receivedHeaders = r.Header
-			buf := make([]byte, 1024)
-			n, _ := r.Body.Read(buf)
-			receivedBody = string(buf[:n])
+			buf, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			receivedBody = string(buf)
 			w.WriteHeader(http.StatusOK)
 		}))
 		defer ts.Close()
 
 		// Create webhook settings
 		settings := &config.WebhookSettings{
-			Success: config.WebhookEventSetting{
+			Success: config.WebhookRequest{
 				Url:     ts.URL,
 				Method:  "POST",
 				Body:    "success-body",
@@ -36,8 +37,8 @@ func TestWebhookClient(t *testing.T) {
 			Client: config.WebhookClient{},
 		}
 
-		client := NewWebhookClient(settings)
-		err := client.Success()
+		client := NewClient(settings)
+		err := client.triggerSuccess()
 		require.NoError(t, err)
 
 		// Verify request
@@ -51,15 +52,15 @@ func TestWebhookClient(t *testing.T) {
 		var receivedBody string
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			receivedHeaders = r.Header
-			buf := make([]byte, 1024)
-			n, _ := r.Body.Read(buf)
-			receivedBody = string(buf[:n])
+			buf, err := io.ReadAll(r.Body)
+			require.NoError(t, err)
+			receivedBody = string(buf)
 			w.WriteHeader(http.StatusOK)
 		}))
 		defer ts.Close()
 
 		settings := &config.WebhookSettings{
-			Failure: config.WebhookEventSetting{
+			Failure: config.WebhookRequest{
 				Url:     ts.URL,
 				Method:  "PUT",
 				Body:    "failure-body",
@@ -68,8 +69,8 @@ func TestWebhookClient(t *testing.T) {
 			Client: config.WebhookClient{},
 		}
 
-		client := NewWebhookClient(settings)
-		err := client.Failure()
+		client := NewClient(settings)
+		err := client.triggerFailure()
 		require.NoError(t, err)
 
 		assert.Equal(t, "failure-body", receivedBody)
@@ -78,13 +79,13 @@ func TestWebhookClient(t *testing.T) {
 
 	t.Run("empty url skips webhook", func(t *testing.T) {
 		settings := &config.WebhookSettings{
-			Success: config.WebhookEventSetting{
+			Success: config.WebhookRequest{
 				Url: "",
 			},
 		}
 
-		client := NewWebhookClient(settings)
-		err := client.Success()
+		client := NewClient(settings)
+		err := client.triggerSuccess()
 		require.NoError(t, err)
 	})
 
@@ -95,13 +96,13 @@ func TestWebhookClient(t *testing.T) {
 		defer ts.Close()
 
 		settings := &config.WebhookSettings{
-			Success: config.WebhookEventSetting{
+			Success: config.WebhookRequest{
 				Url: ts.URL,
 			},
 		}
 
-		client := NewWebhookClient(settings)
-		err := client.Success()
+		client := NewClient(settings)
+		err := client.triggerSuccess()
 		require.Error(t, err)
 		assert.Contains(t, err.Error(), "webhook returned status 400")
 	})

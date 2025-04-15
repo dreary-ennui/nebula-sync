@@ -1,10 +1,13 @@
-with-expecter: True
-dir: internal/mocks/{{.PackageName}}
-mockname: "{{.InterfaceName}}"
-outpkg: "{{.PackageName}}"
-filename: "{{.InterfaceName}}.go"
-all: True
+all: false
+dir: 'internal/mocks/{{.SrcPackageName}}'
+filename: '{{.InterfaceName}}.go'
+force-file-write: true
+formatter: goimports
+structname: '{{.InterfaceName}}'
+pkgname: '{{.SrcPackageName}}'
+template: testify
 packages:
   github.com/lovelaze/nebula-sync:
     config:
-      recursive: True
+      all: true
+      recursive: true

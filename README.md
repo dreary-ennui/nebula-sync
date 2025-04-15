@@ -90,7 +90,6 @@ The following environment variables can be specified:
 | `CLIENT_RETRY_DELAY_SECONDS`       | 1       | 5               | Seconds to delay between connection attempts       |
 | `CLIENT_TIMEOUT_SECONDS`           | 20      | 60              | Http client timeout in seconds                     |
 
-
 > **Note:** The following optional settings apply only if `FULL_SYNC=false`. They allow for granular control of synchronization if a full sync is not wanted.
 
 | Name                              | Default | Description                            |
@@ -156,7 +155,7 @@ Additionally, you can skip TLS verification for all webhooks if necessary:
 |-------------------------------------------------|---------|-----------------|----------------------------------------------------|
 | `SYNC_WEBHOOK_CLIENT_SKIP_TLS_VERIFICATION`     | false   | true            | Skips TLS certificate verification                 |
 
-#### Examples
+#### Integration examples:
 
 ##### healthcheck.io:
 

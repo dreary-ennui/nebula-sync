@@ -232,7 +232,7 @@ func (cs *ConfigFilter) String() string {
 	return fmt.Sprintf("%+v", *cs)
 }
 
-func (wes *WebhookEventSetting) String() string {
+func (wes *WebhookRequest) String() string {
 	return fmt.Sprintf("%+v", *wes)
 }
 

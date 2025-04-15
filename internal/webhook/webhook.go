@@ -12,22 +12,17 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type WebhookClient interface {
-	Success() error
-	Failure() error
+type Client struct {
+	success    config.WebhookRequest
+	failure    config.WebhookRequest
+	httpClient *http.Client
 }
 
-type webhookClient struct {
-	successConfig config.WebhookEventSetting
-	failureConfig config.WebhookEventSetting
-	client        *http.Client
-}
-
-func NewWebhookClient(c *config.WebhookSettings) WebhookClient {
-	return &webhookClient{
-		successConfig: c.Success,
-		failureConfig: c.Failure,
-		client: &http.Client{
+func NewClient(c *config.WebhookSettings) *Client {
+	return &Client{
+		success: c.Success,
+		failure: c.Failure,
+		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 			Transport: &http.Transport{
 				TLSClientConfig: &tls.Config{InsecureSkipVerify: c.Client.SkipTLSVerification},
@@ -35,15 +30,27 @@ func NewWebhookClient(c *config.WebhookSettings) WebhookClient {
 	}
 }
 
-func (webhookClient *webhookClient) Success() error {
-	return invokeWebhook(webhookClient.client, webhookClient.successConfig)
+func (c *Client) OnSuccess() {
+	if err := c.triggerSuccess(); err != nil {
+		log.Warn().Err(err).Msg("Webhook trigger failed")
+	}
 }
 
-func (webhookClient *webhookClient) Failure() error {
-	return invokeWebhook(webhookClient.client, webhookClient.failureConfig)
+func (c *Client) OnFailure(err error) {
+	if err := c.triggerFailure(); err != nil {
+		log.Warn().Err(err).Msg("Webhook trigger failed")
+	}
 }
 
-func invokeWebhook(client *http.Client, settings config.WebhookEventSetting) error {
+func (c *Client) triggerSuccess() error {
+	return invoke(c.httpClient, c.success)
+}
+
+func (c *Client) triggerFailure() error {
+	return invoke(c.httpClient, c.failure)
+}
+
+func invoke(client *http.Client, settings config.WebhookRequest) error {
 	if settings.Url == "" {
 		return nil
 	}

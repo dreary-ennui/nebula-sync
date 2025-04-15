@@ -7,39 +7,34 @@ import (
 )
 
 type WebhookSettings struct {
-	Failure WebhookEventSetting `ignored:"true"`
-	Success WebhookEventSetting `ignored:"true"`
-	Client  WebhookClient       `ignored:"true"`
+	Failure WebhookRequest `ignored:"true"`
+	Success WebhookRequest `ignored:"true"`
+	Client  WebhookClient  `ignored:"true"`
 }
 
 type WebhookClient struct {
 	SkipTLSVerification bool `default:"false" envconfig:"SKIP_TLS_VERIFICATION"`
 }
 
-type WebhookEventSetting struct {
-	Body    string            `default:"" envconfig:"BODY"`
-	Headers map[string]string `default:"" envconfig:"HEADERS"`
+type WebhookRequest struct {
+	Body    string            `envconfig:"BODY"`
+	Headers map[string]string `envconfig:"HEADERS"`
 	Method  string            `default:"POST" envconfig:"METHOD"`
-	Url     string            `default:"" envconfig:"URL"`
+	Url     string            `envconfig:"URL"`
 }
 
-const envPrefix = "SYNC_WEBHOOK_"
+const webhookEnvPrefix = "SYNC_WEBHOOK_"
 
 func (c *Config) loadWebhookSettings() error {
-	webhookSettings := WebhookSettings{
-		Failure: WebhookEventSetting{},
-		Success: WebhookEventSetting{},
-		Client:  WebhookClient{},
-	}
+	webhookSettings := WebhookSettings{}
 
-	if err := envconfig.Process(envPrefix+"FAILURE", &webhookSettings.Failure); err != nil {
+	if err := envconfig.Process(webhookEnvPrefix+"FAILURE", &webhookSettings.Failure); err != nil {
 		return fmt.Errorf("process webhook env vars for failure: %w", err)
 	}
-	if err := envconfig.Process(envPrefix+"SUCCESS", &webhookSettings.Success); err != nil {
+	if err := envconfig.Process(webhookEnvPrefix+"SUCCESS", &webhookSettings.Success); err != nil {
 		return fmt.Errorf("process webhook env vars for success: %w", err)
 	}
-
-	if err := envconfig.Process(envPrefix+"CLIENT", &webhookSettings.Client); err != nil {
+	if err := envconfig.Process(webhookEnvPrefix+"CLIENT", &webhookSettings.Client); err != nil {
 		return fmt.Errorf("process webhook env vars for client: %w", err)
 	}
 

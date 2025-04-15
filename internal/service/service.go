@@ -2,22 +2,29 @@ package service
 
 import (
 	"fmt"
-
 	"github.com/lovelaze/nebula-sync/internal/sync/retry"
+	"github.com/lovelaze/nebula-sync/internal/webhook"
 
 	"github.com/lovelaze/nebula-sync/internal/config"
 	"github.com/lovelaze/nebula-sync/internal/pihole"
 	"github.com/lovelaze/nebula-sync/internal/sync"
-	"github.com/lovelaze/nebula-sync/internal/webhook"
 	"github.com/lovelaze/nebula-sync/version"
 	"github.com/robfig/cron/v3"
 	"github.com/rs/zerolog/log"
 )
 
 type Service struct {
-	target  sync.Target
-	conf    config.Config
-	webhook webhook.WebhookClient
+	target    sync.Target
+	conf      config.Config
+	callbacks []sync.Callback
+}
+
+func NewService(target sync.Target, conf config.Config, callbacks ...sync.Callback) *Service {
+	return &Service{
+		target:    target,
+		conf:      conf,
+		callbacks: callbacks,
+	}
 }
 
 func Init() (*Service, error) {
@@ -35,11 +42,11 @@ func Init() (*Service, error) {
 		replicas = append(replicas, pihole.NewClient(replica, httpClient))
 	}
 
-	return &Service{
-		target:  sync.NewTarget(primary, replicas),
-		conf:    conf,
-		webhook: webhook.NewWebhookClient(conf.Sync.WebhookSettings),
-	}, nil
+	webhookClient := webhook.NewClient(conf.Sync.WebhookSettings)
+
+	target := sync.NewTarget(primary, replicas)
+	service := NewService(target, conf, webhookClient)
+	return service, nil
 }
 
 func (service *Service) Run() error {
@@ -69,15 +76,14 @@ func (service *Service) doSync(t sync.Target) (err error) {
 	}
 
 	if err != nil {
-		if err := service.webhook.Failure(); err != nil {
-			log.Error().Err(err).Msg("Failed to send failure webhook")
+		for _, callback := range service.callbacks {
+			callback.OnFailure(err)
 		}
 	} else {
-		log.Info().Msg("Sync completed")
-
-		if err := service.webhook.Success(); err != nil {
-			log.Error().Err(err).Msg("Failed to send success webhook")
+		for _, callback := range service.callbacks {
+			callback.OnSuccess()
 		}
+		log.Info().Msg("Sync completed")
 	}
 
 	return err
