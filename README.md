@@ -133,11 +133,6 @@ Config keys are relative to the section and are **case sensitive**. For example,
 | `SYNC_CONFIG_DEBUG_INCLUDE`       | database,networking        | Debug config keys to include                   |
 | `SYNC_CONFIG_DEBUG_EXCLUDE`       | database,networking        | Debug config keys to exclude                   |
 
-## Notes
-
-### Default user of Docker container / Docker secrets example
-By default, the Docker container runs as user `1001`. If you are using Docker secrets, the user that is running the container will need read permissions to the files that the Docker secrets reference. If the user does not have the right permissions you will receive an error `Failed to initialize service error="open /run/secrets/primary: permission denied"`. To avoid this error, either make sure to `chown 1001 ./your/secretfiles && chmod 400 ./your/secretfiles` or use the [`user` directive in Docker Compose](https://docs.docker.com/reference/compose-file/services/#user) to change the user that the container runs as to a user of your choice - and then make sure to update your secret files' ownership to that user. In the example [docker-compose-with-secrets.yml](examples/docker-compose-with-secrets.yml), user `1234` owns `./secrets/primary.txt` and `./secrets/replicas.txt` and both have `-r--------` permissions.
-
 ### Webhooks
 
 Nebula Sync can invoke webhooks depeneding if a sync succeeded or failed. URL is required for the webhook to trigger. Both success and failure webhooks use the same enviroment variable pattern. Webhooks have a timeout of 10 seconds.
@@ -147,7 +142,7 @@ Nebula Sync can invoke webhooks depeneding if a sync succeeded or failed. URL is
 | `SYNC_WEBHOOK_(SUCCESS\|FAILURE)_URL`    | n/a     | `https://www.example.com/webhook` | URL to invoke for the webhook    |
 | `SYNC_WEBHOOK_(SUCCESS\|FAILURE)_METHOD` | `POST`  | `GET`                             | The HTTP method for the webhook     |
 | `SYNC_WEBHOOK_(SUCCESS\|FAILURE)_BODY`   | n/a     | `this is my webhook body`         | The body of the webhook request |
-| `SYNC_WEBHOOK_(SUCCESS\|FAILURE)_HEADERS` | n/a    | `header1:foo,header2:bar`         | HTTP headers to set for the webhook request in the format `key:value` separated by comma. Any whitespace will be used verbatim, no string trimming. | 
+| `SYNC_WEBHOOK_(SUCCESS\|FAILURE)_HEADERS` | n/a    | `header1:foo,header2:bar`         | HTTP headers to set for the webhook request in the format `key:value` separated by comma. Any whitespace will be used verbatim, no string trimming. |
 
 Additionally, you can skip TLS verification for all webhooks if necessary:
 
@@ -178,6 +173,16 @@ SYNC_WEBHOOK_FAILURE_URL=https://www.example.com/notify.json
 SYNC_WEBHOOK_FAILURE_BODY={"hello":"world"}
 SYNC_WEBHOOK_FAILURE_HEADERS=Content-Type:application/json
 ```
+
+## Notes / Known issues
+
+### Default user of Docker container / Docker secrets example
+By default, the Docker container runs as user `1001`. If you are using Docker secrets, the user that is running the container will need read permissions to the files that the Docker secrets reference. If the user does not have the right permissions you will receive an error `Failed to initialize service error="open /run/secrets/primary: permission denied"`. To avoid this error, either make sure to `chown 1001 ./your/secretfiles && chmod 400 ./your/secretfiles` or use the [`user` directive in Docker Compose](https://docs.docker.com/reference/compose-file/services/#user) to change the user that the container runs as to a user of your choice - and then make sure to update your secret files' ownership to that user. In the example [docker-compose-with-secrets.yml](examples/docker-compose-with-secrets.yml), user `1234` owns `./secrets/primary.txt` and `./secrets/replicas.txt` and both have `-r--------` permissions.
+
+### App passwords and authentication errors
+When using Pi-hole's app passwords ("Configure app password" in the Web interface / API settings page) with nebula-sync, you should enable the Pi-hole setting `webserver.api.app_sudo` on your `REPLICAS` servers or you may receive authentication errors. To configure this setting, perform one of the following:
+- From the Pi-hole web UI, go to Settings -> All Settings. Toggle the "Modified settings / All settings" slider in the upper right to show "All settings". Choose the "Webserver and API" section. Check the "Enabled" box under `webserver.api.app_sudo` and then click "Save & Apply". Repeat for each replica.
+- With the text editor of your choice, edit the `/etc/pihole/pihole.toml` file. Find the `app_sudo = false` line under `[webserver.api]` and modify it to read `app_sudo = true`. Save the file and restart the pihole-FTL service. Repeat for each replica.
 
 
 ## Disclaimer
